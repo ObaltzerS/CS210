@@ -14,6 +14,6 @@ CHIP Bit {
     OUT out;
 
     PARTS:
-    Mux(a=loop, b=in, sel=load, out=mid);
-    DFF(in=mid, out=loop, out=out);    
+    Mux(a=loop, b=in, sel=load, out=mid); //choose between in and the previous out
+    DFF(in=mid, out=loop, out=out); //loop one output, and output the other
 }

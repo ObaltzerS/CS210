@@ -18,10 +18,10 @@ CHIP PC {
     PARTS:
     // Put your code here:
 
-    Inc16(in=m1, out=m1inc);
-    Mux16(a=m1, b=m1inc, sel=inc, out=m2);
-    Mux16(a=m2, b=in, sel=load, out=m3);
-    Mux16(a=m3, b=false, sel=reset, out=m4);
-    Register(in=m4, load=true, out=out, out=m1);
+    Inc16(in=m1, out=m1inc); // Increment m1, the current output
+    Mux16(a=m1, b=m1inc, sel=inc, out=m2); // select between current output and incremented output
+    Mux16(a=m2, b=in, sel=load, out=m3); // select between new load in or current output
+    Mux16(a=m3, b=false, sel=reset, out=m4); // select between reset or current output
+    Register(in=m4, load=true, out=out, out=m1); // load value into register and provide current output
     
 }
