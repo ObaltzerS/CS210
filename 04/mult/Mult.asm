@@ -10,4 +10,40 @@
 // R0 >= 0, R1 >= 0, and R0*R1 < 32768.
 
 // Put your code here.
+// gonna use this as a model for the multiplication algorithm
 
+// i = 1
+@i
+M=0
+// prod = 0
+@prod
+M=2
+(LOOP)
+@i
+D=M
+@R0
+D=D-M
+@STOP
+D;JGT
+// sum = sum + i
+@sum
+D=M
+@i
+D=D+M
+@sum
+M=D
+// i = i + 1
+@i
+M=M+1
+// goto LOOP
+@LOOP
+0;JMP
+(STOP)
+// R1 = sum
+@sum
+D=M
+@R1
+M=D
+(END)
+@END
+0;JMP
