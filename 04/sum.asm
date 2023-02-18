@@ -9,7 +9,7 @@ M=0 //sum R0 <- 0
 M=0 //counter R2 <- 0
 
 //loop
-LOOP:
+
 // need to compare R0 < R7
 // subtract and if result == 0 end loop
 @R7
@@ -32,5 +32,5 @@ M=D+M // calculate new sum
 M=M+1 //increment counter
 @LOOP
 0;JMP
-ENDLOOP:
+@END
 0;JMP

@@ -12,38 +12,32 @@
 // Put your code here.
 // gonna use this as a model for the multiplication algorithm
 
-// i = 1
-@i
+// initialize
+
+// counter
+@R3
 M=0
-// prod = 0
-@prod
-M=2
+// result 
+@R2
+M=0
+
+//My idea is to run a loop which adds R0 however many times there is a value in R1
+
+// check counter
 (LOOP)
-@i
-D=M
-@R0
-D=D-M
-@STOP
-D;JGT
-// sum = sum + i
-@sum
-D=M
-@i
-D=D+M
-@sum
-M=D
-// i = i + 1
-@i
-M=M+1
-// goto LOOP
-@LOOP
-0;JMP
-(STOP)
-// R1 = sum
-@sum
+@R3
 D=M
 @R1
-M=D
-(END)
+D=D-M
 @END
+D;JEQ
+@R0
+D=M
+@R2
+M=M+D
+@R3
+M=M+1
+@LOOP
+(END)
 0;JMP
+@END
