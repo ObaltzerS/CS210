@@ -13,3 +13,26 @@
 
 // Put your code here.
 
+//outline:
+
+//initialize any registers which I need
+
+//stage one: loop which constantly listens for keyboard input, if there is input, jump to blacken commands
+
+@KEYBOARD
+D=M
+@BLACK
+D;JGT
+@WHITE
+D;JEQ
+
+//black loop which assigns all pixels on screen to -1 and then checks if KBD > 0
+//on KBD > 0, this loop should end and go back to the previous KBD check loop
+(BLACK)
+
+
+//white loop which assigns all pixels on the screen to 1, then checks if KBD > 0
+//on KBD > 0 loop is ended and the og kbd check loop is activated
+(WHITE)
+
+
