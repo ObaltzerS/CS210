@@ -19,20 +19,34 @@
 
 //stage one: loop which constantly listens for keyboard input, if there is input, jump to blacken commands
 
-@KEYBOARD
+//initialize temp registers
+@R1 // this will hold our color value 
+M=0
+@R2 // this will hold our pixel address
+M=0
+// Loop to chek whether KBD is greater than 0 or equal to 0, jumping to either black of white respectively
+(LOOP)
+@KBD
 D=M
 @BLACK
 D;JGT
 @WHITE
 D;JEQ
-
-//black loop which assigns all pixels on screen to -1 and then checks if KBD > 0
-//on KBD > 0, this loop should end and go back to the previous KBD check loop
-(BLACK)
-
-
-//white loop which assigns all pixels on the screen to 1, then checks if KBD > 0
-//on KBD > 0 loop is ended and the og kbd check loop is activated
+@LOOP
+0;JMP
+//assign temp register to white value, then navigate to fill
 (WHITE)
+@R1
+M=0
+@FILL
+0;JMP
+//assign temp register to black value, then navigate to fill
+(BLACK)
+@R1
+M=-1
+@FILL
+0;JMP
+//fill screen using the value stored in temp register
+(FILL)
 
 
