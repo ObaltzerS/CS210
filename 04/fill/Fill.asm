@@ -20,11 +20,13 @@
 //stage one: loop which constantly listens for keyboard input, if there is input, jump to blacken commands
 
 //initialize temp registers
-@R1 // this will hold our color value 
-M=0
-@R2 // this will hold our pixel address
-M=0
+(OUTER)
+@SCREEN
+D=A
+@R1
+M=D
 // Loop to chek whether KBD is greater than 0 or equal to 0, jumping to either black of white respectively
+
 (LOOP)
 @KBD
 D=M
@@ -34,19 +36,37 @@ D;JGT
 D;JEQ
 @LOOP
 0;JMP
+
 //assign temp register to white value, then navigate to fill
-(WHITE)
-@R1
-M=0
-@FILL
-0;JMP
-//assign temp register to black value, then navigate to fill
 (BLACK)
+@R1 // get new address out of memory
+D=M
+@KBD
+D=A-D
+@OUTER
+D;JEQ // check if address - 16384 = 0
 @R1
-M=-1
-@FILL
+A=M
+M=-1 // set new address to -1
+D=A 
+@R1 
+M=M+1 //inc to next address
+@BLACK
 0;JMP
-//fill screen using the value stored in temp register
-(FILL)
 
-
+//assign temp register to black value, then navigate to fill
+(WHITE)
+@R1 // get new address out of memory
+D=M
+@KBD
+D=A-D
+@OUTER
+D;JEQ // check if address - 16384 = 0
+@R1
+A=M
+M=0 // set new address to -1
+D=A 
+@R1 
+M=M+1 //inc to next address
+@WHITE
+0;JMP
