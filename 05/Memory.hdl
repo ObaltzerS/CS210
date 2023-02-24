@@ -26,6 +26,16 @@ CHIP Memory {
     IN in[16], load, address[15];
     OUT out[16];
 
+    /*
+    Note:
+        Address 0-16383 is Data memory
+        Address 16384-24575 is Screen memory
+        Address 24576 is Keyboard memory
+    */
+
+
     PARTS:
-    // Put your code here:
+    RAM16K(data=in, load=load, address=address, out=out);
+    Screen(in=, load=, address=, out=);
+    Keyboard(out=);
 }
