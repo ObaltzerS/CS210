@@ -33,9 +33,17 @@ CHIP Memory {
         Address 24576 is Keyboard memory
     */
 
-
     PARTS:
-    RAM16K(data=in, load=load, address=address, out=out);
-    Screen(in=, load=, address=, out=);
-    Keyboard(out=);
+    // outline: DMux using selectors 13..14, feed to load, Mux out
+    // RAM is loaded if 0 - 0 or 0 - 1
+    // SCREEN is loaded if 1 - 0
+    //KBD is loaded if 1 - 1
+    DMux4Way(in=load, sel=address[13..14], a=loadRAM0, b=loadRAM1, c=loadSCREEN, d=loadKBD);
+    Or(a=loadRAM0, b=loadRAM1, out=loadRAM);
+    RAM16K(in=in, load=loadRAM, address=address[0..13], out=RAMout);
+    Screen(in=in, load=loadSCREEN, address=address[0..12], out=SCREENout);
+    Keyboard(out=KBD);
+    Register(in=KBD, load=loadKBD, out=KBDout);
+    Mux4Way16(a=RAMout, b=RAMout, c=SCREENout, d=KBDout, sel=address[13..14], out=out);
 }
+//looks like the issue with my current implimentation is that some of the Screen inputs are being interpreted as RAM

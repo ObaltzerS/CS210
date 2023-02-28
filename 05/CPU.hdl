@@ -28,7 +28,7 @@
 CHIP CPU {
 
     IN  inM[16],         // M value input  (M = contents of RAM[A])
-        instruction[16], // Instruction for execution
+        instruction[16], // instruction for execution
         reset;           // Signals whether to re-start the current
                          // program (reset==1) or continue executing
                          // the current program (reset==0).
@@ -40,18 +40,44 @@ CHIP CPU {
 
     PARTS:
     // Put your code here:
-    Mux16(a=, b=, sel=, out=); // instruction or ALUout
 
-    Register(in=, load=, out=); // A register
+    // REGISTER loading, input and output selection
 
-    Register(in=, load=, out=); // D register
-
-    Mux16(a=, b=, sel=, out=); // inM  or Areg
-
-    PC(in=, load=, inc=, reset=, out=); // Reset or PC+1 or PC+2
-
-    ALU(x=, y=, zx=, nx=, zy=, ny=, f=, no=, out=, zr=, ng=); // ALU
-
+    And(a=instruction[15], b=instruction[5], out=AregSel); // check if destination is A register
+    Mux16(a=instruction, b=ALUout, sel=AregSel, out=AregIn); // instruction or ALUout
     
+    Not(in=instruction[15], out=Ainstruction); // if [15] == 0, load A register
+    Or(a=Ainstruction, b=AregSel, out=AregLoad);
+    ARegister(in=AregIn, load=AregLoad, out=PCin, out[0..14]=addressM, out=AregOut); // A register
+    
+    Mux16(a=AregOut, b=inM, sel=instruction[12], out=ALUX); // decide whether to use data from RAM or A register
+    
+    And(a=instruction[15], b=instruction[4], out=DregLoad); // if instruction is a C-type and the D register is a destination
+    DRegister(in=ALUout, load=DregLoad, out=ALUY); // D register
+    
+    // ALU and outputs
+
+    ALU(x=ALUY, y=ALUX, zx=instruction[11], nx=instruction[10], zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6], out=outM, out=ALUout, zr=zr, ng=ng); // ALU
+    
+    And(a=instruction[15], b=instruction[3], out=writeM);
+
+    // JUMP states
+
+    Or(a=zr, b=ng, out=zrORng);
+    Not(in=zrORng, out=JGT); // jump if greater than
+
+    Not(in=ng, out=JGE); // jump if greater than or equal to
+
+    Not(in=zr, out=JNE); // jump if not equal to zero
+
+    Or(a=zr, b=ng, out=JLE); // jump if less than or equal to
+
+    //JUMP selection and PC
+
+    Mux8Way(a=false, b=JGT, c=zr, d=JGE, e=ng, f=JNE, g=JLE, h=true, sel=instruction[0..2], out=JUMP); // select jump
+
+    And(a=JUMP, b=instruction[15], out=loadPC); // if jump and C-type
+
+    PC(in=AregOut, load=loadPC, inc=true, reset=reset, out[0..14]=pc); // PC
 
 }
