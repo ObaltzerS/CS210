@@ -62,16 +62,14 @@ def statement_type(statement):
     to identify the type of statement represented by the parameter string.
     If the statement is none of these types, throw a FatalError exception.
     """
-    
-    if(statement[0] == "@"):
+    if statement[0] == "@":
         return A_INSTRUCTION
-    elif(statement[0] == "("):
+    elif statement[0] == "(":
         return L_DIRECTIVE
     else:
         return C_INSTRUCTION
     
-    pass
-
+    
 def emit_C_instruction(statement, output_file):
     """
     Given an assembly language statement corresponding to a C-instruction,
@@ -85,53 +83,40 @@ def emit_C_instruction(statement, output_file):
     # dest(string), comp(string), and jump(string) 
     # to translate assembly mnemonics of each type into strings of 0 and 1.
     codeTranslator = CodeTranslator()
-    #find parts
+    
+    #detect and index of POI
+    A = ("=" in statement)
+    B = (";" in statement)
+    if (A): equalsIndex = statement.find("=")
+    if (B): sColonIndex = statement.index(";")
 
-    #dest
-    if ("=" in statement):
-        equalsIndex = statement.find("=")
-        destination = statement[:equalsIndex]
-        operation = statement[equalsIndex + 1:]
+    #find parts of instruction
+    if (A and B):
+        dest = statement[:equalsIndex]
+        op = statement[equalsIndex + 1:sColonIndex]
+        jump = statement[sColonIndex + 1:]
+    elif (A and not B):
+        dest = statement[:equalsIndex]
+        op = statement[equalsIndex + 1:]
+        jump = ""
+    elif (B and not A):
+        dest = ""
+        op = statement[:sColonIndex]
+        jump = statement[sColonIndex + 1:]
     else:
-        destination = ""
-    #comp
-    if (";" in statement):
-        sColonIndex = statement.index(";")
-        operation = statement[:sColonIndex]
-        JMPtype = statement[sColonIndex + 1:]
-    else:
-        
-        JMPtype = ""
-    #translation
-    dest = codeTranslator.dest(destination)
-    comp = codeTranslator.comp(operation)
-    jump = codeTranslator.jump(JMPtype)
-        
-    """equalsIndex = statement.find("=")
-    if (equalsIndex != -1):
-        destination = statement[:equalsIndex]
-        operation = statement[equalsIndex + 1:]
-    if (";" in statement):
-        
-        sColonIndex = statement.index(";")
-        operation = statement[:sColonIndex]
-        JMPtype = statement[sColonIndex + 1:]
-    #translation
-    dest = codeTranslator.dest(destination)
-    comp = codeTranslator.comp(operation)
-    jump = codeTranslator(JMPtype)
-    if ("M" in operation):
-        a = "1"
-    else:
-        a = "0"
-    """
-    
-    translatedInstruction = "111" + str(comp) + str(dest) + str(jump) + "\n"
-    
+        dest = ""
+        op = statement
+        jump = ""
+
+    #translate
+    destination = codeTranslator.dest(dest)
+    computation = codeTranslator.comp(op)
+    jumpCode = codeTranslator.jump(jump)
+
+    #assemble and output instruction
+    translatedInstruction = "111" + str(computation) + str(destination) + str(jumpCode) + "\n"
     output_file.write(translatedInstruction)
 
-    # TODO Stage A: translate C instruction to machine instruction and write to file
-    pass
 
 def emit_A_instruction(statement, symbol_table, output_file):
     """
@@ -142,36 +127,32 @@ def emit_A_instruction(statement, symbol_table, output_file):
     of exactly one machine language instruction.
     """
     # TODO Stage A: translate A instruction to machine instruction and write to file
-    #step 1: assert A type
-    if (statement_type(statement) != A_INSTRUCTION):
-        FatalError("Statement not A type")
     address = statement[1:]
-    #step 2: translate after @ to binary
-    if (address.isdigit()):
+
+    if (address in symbol_table):
+        binaryAddress = bin(int(symbol_table[address]))[2:]
+    elif (address.isdigit()):
         binaryAddress = bin(int(address))[2:]
-        print(binaryAddress)
-        output_file.write("{0:0>17}".format(binaryAddress + "\n"))
     else:
-        if (address in symbol_table):
-            binaryAddress = bin(int(symbol_table[address]))[2:]
-            print(binaryAddress)  
-            output_file.write("{0:0>17}".format(binaryAddress + "\n"))
-    #step 3: write to file
-    # TODO Stage B: revise to handle labels as well as integer constants
-    pass
+        nextAvailibleAddress = 16
+        while(nextAvailibleAddress in symbol_table.values()):
+                nextAvailibleAddress +=1
+        binaryAddress = bin(int(nextAvailibleAddress))[2:]
+    output_file.write("{0:0>17}".format(binaryAddress + "\n"))
+    
 
 def first_pass(statement_list, symbol_table):
     """
     Given a list of statements, adds labels to the given symbol table.
     """
     # TODO Stage B: Add labels to symbol table
-    # this should work
+    ROMAddress = 0 #need to keep track of ROM address bc labels are not counted as instructions
     for statement in statement_list:
-        if statement_type(statement) == L_DIRECTIVE:
-            address = statement_list.index(statement)
-            symbol = statement[1:-1]
-            symbol_table[symbol] = address
-    pass
+        if (statement_type(statement) == L_DIRECTIVE):
+            label = statement[1:-1]
+            symbol_table[label] = ROMAddress
+        else:
+            ROMAddress += 1 # only increment if label is not detected
 
 def second_pass(statement_list, symbol_table, output_filename):
     """
@@ -192,7 +173,6 @@ def second_pass(statement_list, symbol_table, output_filename):
         elif statement_type(statement) == C_INSTRUCTION:
             emit_C_instruction(statement, output_file)
         # Note that we do not emit instructions for label directives
-
     output_file.close()
    
 def main():
@@ -208,12 +188,11 @@ def main():
 
     # Read and preprocess the assembly source code into a list of statements
     list_of_statements = read_asm_file(input_filename)
-    print(list_of_statements) #debug
+    #print(list_of_statements) #debug
     # Assemble the code!
     first_pass(list_of_statements, symbol_table)
-    print(symbol_table) #debug
+    #print(symbol_table) #debug
     second_pass(list_of_statements, symbol_table, output_filename)
-
 
 if __name__ == '__main__':
     main();
