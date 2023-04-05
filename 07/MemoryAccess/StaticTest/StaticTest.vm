@@ -2,6 +2,7 @@
 // and the book "The Elements of Computing Systems"
 // by Nisan and Schocken, MIT Press.
 // File name: projects/07/MemoryAccess/StaticTest/StaticTest.vm
+// Modified by Cary Gray, 2021
 
 // Executes pop and push commands using the static segment.
 push constant 111
@@ -14,4 +15,6 @@ push static 3
 push static 1
 sub
 push static 8
+add
+push static 2 // should be 0
 add

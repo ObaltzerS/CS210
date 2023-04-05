@@ -1,0 +1,9 @@
+// To test that static locations from different files do not collide
+// This file will translate first into StaticTest.asm. The checked results
+// of executing StaticTest.vm on the VMEmulator will be the same as executing
+// the .asm file that includes this on the CPUEmulator.
+// NOTE: this test depends on the order in which files are translated
+// by hvm.py.
+//    Cary Gray 2021
+push constant 222
+pop static 2

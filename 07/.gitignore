@@ -1,0 +1,9 @@
+# general
+.nfs*
+*~
+# Python cruft
+*.pyc
+__pycache__
+# for VM projects
+*.asm
+*.out

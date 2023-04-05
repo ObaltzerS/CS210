@@ -7,6 +7,9 @@
 # Refactored and debugged January 2019 by Janet Davis
 # Edited 2021-22 by Cary Gray
 
+
+
+
 """
 hasm.py -- Hack computer assembler
 
@@ -20,6 +23,10 @@ from hasmUtils import *
 from sys import argv
 import string
 import re
+
+#I need a global variable to keep track of the next availible address for variables
+
+
 
 def read_asm_file(input_filename):
     """
@@ -66,8 +73,10 @@ def statement_type(statement):
         return A_INSTRUCTION
     elif statement[0] == "(":
         return L_DIRECTIVE
-    else:
+    elif statement[0] in string.ascii_letters or statement[0] in string.digits:
         return C_INSTRUCTION
+    else: 
+        FatalError("Invalid statement type: " + statement)
     
     
 def emit_C_instruction(statement, output_file):
@@ -87,9 +96,10 @@ def emit_C_instruction(statement, output_file):
     #detect and index of POI
     A = ("=" in statement)
     B = (";" in statement)
-    if (A): equalsIndex = statement.find("=")
-    if (B): sColonIndex = statement.index(";")
-
+    if (A): equalsIndex = statement.find("=") #true if a "=" is found in the statement, false otherwise
+    if (B): sColonIndex = statement.index(";") #true if a ";" is found in the statement, false otherwise
+    # this may be a little inconcise, but I find it easier to read and work with
+    
     #find parts of instruction
     if (A and B):
         dest = statement[:equalsIndex]
@@ -126,18 +136,20 @@ def emit_A_instruction(statement, symbol_table, output_file):
     16 characters "0" and "1". Each line of the output file should consist
     of exactly one machine language instruction.
     """
-    # TODO Stage A: translate A instruction to machine instruction and write to file
     address = statement[1:]
-
+    # global nextAvailibleAddress
     if (address in symbol_table):
-        binaryAddress = bin(int(symbol_table[address]))[2:]
+        binaryAddress = bin(int(symbol_table[address]))[2:] #conver to binary, lopping off the 0b
     elif (address.isdigit()):
         binaryAddress = bin(int(address))[2:]
     else:
+        #variable handler
         nextAvailibleAddress = 16
-        while(nextAvailibleAddress in symbol_table.values()):
-                nextAvailibleAddress +=1
+        while(nextAvailibleAddress in symbol_table.values()): # this is meant to detect availible addresses, but it gets tripped up on duplicates
+                nextAvailibleAddress +=1 # scan the symbol table for an open address
+        symbol_table[address] = nextAvailibleAddress
         binaryAddress = bin(int(nextAvailibleAddress))[2:]
+
     output_file.write("{0:0>17}".format(binaryAddress + "\n"))
     
 
@@ -147,10 +159,13 @@ def first_pass(statement_list, symbol_table):
     """
     # TODO Stage B: Add labels to symbol table
     ROMAddress = 0 #need to keep track of ROM address bc labels are not counted as instructions
+    # //global usedAddresses[]
     for statement in statement_list:
         if (statement_type(statement) == L_DIRECTIVE):
             label = statement[1:-1]
             symbol_table[label] = ROMAddress
+            # if (ROMAddress == nextAvailibleAddress):
+            #     nextAvailibleAddress += 1
         else:
             ROMAddress += 1 # only increment if label is not detected
 
@@ -193,6 +208,7 @@ def main():
     first_pass(list_of_statements, symbol_table)
     #print(symbol_table) #debug
     second_pass(list_of_statements, symbol_table, output_filename)
+    #print(symbol_table) #debug
 
 if __name__ == '__main__':
     main();
