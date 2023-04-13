@@ -74,13 +74,38 @@ class CodeWriter(object):
         if (debug):
             self.file.write('    // {0}\n'.format(comment))
 
+    def _pushToSegment(self, index, segment):
+        self._writeCode("@"+str(index))
+        self._writeCode("D=A")
+        self._writeCode("@"+self._translateSegment(segment))
+        self._writeCode("D=M+D")
+        self._writeCode("A=D")
+        self._writeCode("D=M")
+        self._pushD()
+
+    def _popToSegment(self,index,segment):
+        self._writeCode("@"+str(index))
+        self._writeCode("D=A")
+        self._writeCode("@"+self._translateSegment(segment))
+        self._writeCode("D=D+M") # calcualte (base + i)
+        self._writeCode("@R13") # store temporarily
+        self._writeCode("M=D")
+        self._popD() # grab value 
+        self._writeCode("@R13")
+        self._writeCode("A=M") # navigate to (base + i) address
+        self._writeCode("M=D")
+
+
+
     def _pushD(self):
         """
         Writes Hack assembly code to push the value from the D register 
         onto the stack.
         TODO - Stage I - see Figure 7.2
         """
-        pass
+        self._writeCode("@SP,A=M,M=D,@SP,M=M+1")
+
+
 
     def _popD(self):
         """"
@@ -88,7 +113,8 @@ class CodeWriter(object):
         into the D register.
         TODO - Stage I - see Figure 7.2
         """
-        pass
+        self._writeCode("@SP,M=M-1,A=M,D=M")
+
 
     def writeArithmetic(self, command):
         """
@@ -98,23 +124,80 @@ class CodeWriter(object):
         self._writeComment(command)
 
         if command == T_ADD:
-            pass 
+            self._popD()
+            self._writeCode("@SP,M=M-1,A=M,D=D+M")
+            self._pushD()
         elif command == T_SUB:
-            pass
+            self._popD()
+            self._writeCode("@SP,M=M-1,A=M,D=M-D")
+            self._pushD()
         elif command == T_NEG:
-            pass
+            self._popD()
+            self._writeCode("@0,D=A-D")
+            self._pushD()
         elif command == T_EQ:
-            pass
+            NE = self._uniqueLabel()
+            END = self._uniqueLabel()
+            self.writeArithmetic(T_SUB)
+            self._popD()
+            self._writeCode("@"+NE)
+            self._writeCode("D;JNE")
+            self._writeCode("D=-1")
+            self._pushD()
+            self._writeCode("@"+END)
+            self._writeCode("0;JMP")
+            self._writeComment("NE")
+            self._writeCode("("+NE+")")
+            self._writeCode("D=0")
+            self._pushD()
+            self._writeComment("END")
+            self._writeCode("("+END+")")
         elif command == T_GT:
-            pass
+            NGT = self._uniqueLabel()
+            END = self._uniqueLabel()
+            self.writeArithmetic(T_SUB)
+            self._popD()
+            self._writeCode("@"+NGT)
+            self._writeCode("D;JLE")
+            self._writeCode("D=-1")
+            self._pushD()
+            self._writeCode("@"+END)
+            self._writeCode("0;JMP")
+            self._writeComment("NGT")
+            self._writeCode("("+NGT+")")
+            self._writeCode("D=0")
+            self._pushD()
+            self._writeComment("END")
+            self._writeCode("("+END+")")
         elif command == T_LT:
-            pass
+            NLT = self._uniqueLabel()
+            END = self._uniqueLabel()
+            self.writeArithmetic(T_SUB)
+            self._popD()
+            self._writeCode("@"+NLT)
+            self._writeCode("D;JGE")
+            self._writeCode("D=-1")
+            self._pushD()
+            self._writeCode("@"+END)
+            self._writeCode("0;JMP")
+            self._writeComment("NLT")
+            self._writeCode("("+NLT+")")
+            self._writeCode("D=0")
+            self._pushD()
+            self._writeComment("END")
+            self._writeCode("("+END+")")
         elif command == T_AND:
-            pass
+            self._popD()
+            self._writeCode("@SP,M=M-1,A=M,D=D&M")
+            self._pushD()
         elif command == T_OR:
-            pass
+            self._popD()
+            self._writeCode("@SP,M=M-1,A=M,D=D|M")
+            self._pushD()
         elif command == T_NOT:
-            pass
+            self._popD()
+            self._writeCode("D=!D")
+            self._pushD()
         else:
             raise(ValueError, 'Bad arithmetic command')
 
@@ -143,13 +226,29 @@ class CodeWriter(object):
             self._writeComment("push {0} {1:d}".format(segment, index))
 
             if segment == T_CONSTANT: 
-                pass 
+                self._writeCode("@"+str(index))
+                self._writeCode("D=A")
+                self._pushD()
             elif segment == T_STATIC:
-                pass
+                self._writeCode("@"+self.fileName+"."+str(index)) #handled as a variable?
+                self._writeCode("D=M")
+                self._pushD()
             elif segment == T_POINTER:
-                pass
+                self._writeCode("@"+str(index + 3))
+                self._writeCode("D=M")
+                self._pushD()
             elif segment == T_TEMP:
-                pass
+                self._writeCode("@"+str(index + 5))
+                self._writeCode("D=M")
+                self._pushD()
+            elif segment == T_ARGUMENT:
+                self._pushToSegment(index, segment)
+            elif segment == T_LOCAL:
+                self._pushToSegment(index, segment)
+            elif segment == T_THIS:
+                self._pushToSegment(index, segment)
+            elif segment == T_THAT:
+                self._pushToSegment(index, segment)
             else: # argument, local, this, that
                 pass
 
@@ -157,11 +256,26 @@ class CodeWriter(object):
             self._writeComment("pop {0} {1:d}".format(segment, index))
 
             if segment == T_STATIC:
-                pass
+                self._popD()
+                self._writeCode("@"+self.fileName+"."+str(index))
+                self._writeCode("M=D")
             elif segment == T_POINTER:
-                pass
+                self._popD()
+                self._writeCode("@"+str(index + 3))
+                self._writeCode("M=D")
             elif segment == T_TEMP:
-                pass
+                self._popD()
+                self._writeCode("@"+str(5 + index))
+                self._writeCode("M=D")
+            elif segment == T_ARGUMENT:
+                self._popToSegment(index,segment)
+            elif segment == T_LOCAL:
+                self._popToSegment(index,segment)
+            elif segment == T_THIS:
+                self._popToSegment(index,segment)
+            elif segment == T_THAT:
+                self._popToSegment(index,segment)
+                
             else: # argument, local, this, that
                 pass
 
