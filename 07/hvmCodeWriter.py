@@ -75,27 +75,50 @@ class CodeWriter(object):
             self.file.write('    // {0}\n'.format(comment))
 
     def _pushToSegment(self, index, segment):
-        self._writeCode("@"+str(index))
-        self._writeCode("D=A")
-        self._writeCode("@"+self._translateSegment(segment))
-        self._writeCode("D=M+D")
+        """
+        A generalized method to push a value from a given segment to the stack
+        """
+        self._writeCode("@%s"%(index)) 
+        self._writeCode("D=A") #get segment offset
+        self._writeCode("@%s"%(self._translateSegment(segment)))
+        self._writeCode("D=M+D") #calculate address of segment to be written in 
         self._writeCode("A=D")
-        self._writeCode("D=M")
-        self._pushD()
+        self._writeCode("D=M") 
+        self._pushD() #push value of segment
 
     def _popToSegment(self,index,segment):
-        self._writeCode("@"+str(index))
+        """
+        A generalized method to pop a value from the stack into a given segment
+        """
+        self._writeCode("@%s"%(index))
         self._writeCode("D=A")
-        self._writeCode("@"+self._translateSegment(segment))
+        self._writeCode("@%s"%(self._translateSegment(segment)))
         self._writeCode("D=D+M") # calcualte (base + i)
         self._writeCode("@R13") # store temporarily
         self._writeCode("M=D")
         self._popD() # grab value 
         self._writeCode("@R13")
         self._writeCode("A=M") # navigate to (base + i) address
-        self._writeCode("M=D")
+        self._writeCode("M=D") # write in segment
 
-
+    def _jumpIf(self, endLabel, jumpLabel, jump):
+        """
+        Write true or false if the given logical operation is satisfied
+        """
+        self.writeArithmetic(T_SUB)
+        self._popD()
+        self._writeCode("@%s"%(jumpLabel))
+        self._writeCode(jump)
+        self._writeCode("D=-1") # if true
+        self._pushD()
+        self._writeCode("@%s"%(endLabel))
+        self._writeCode("0;JMP")
+        self._writeComment("NE")
+        self._writeCode("(%s)"%(jumpLabel))
+        self._writeCode("D=0") # if false
+        self._pushD()
+        self._writeComment("END")
+        self._writeCode("(%s)"%(endLabel))
 
     def _pushD(self):
         """
@@ -138,54 +161,15 @@ class CodeWriter(object):
         elif command == T_EQ:
             NE = self._uniqueLabel()
             END = self._uniqueLabel()
-            self.writeArithmetic(T_SUB)
-            self._popD()
-            self._writeCode("@"+NE)
-            self._writeCode("D;JNE")
-            self._writeCode("D=-1")
-            self._pushD()
-            self._writeCode("@"+END)
-            self._writeCode("0;JMP")
-            self._writeComment("NE")
-            self._writeCode("("+NE+")")
-            self._writeCode("D=0")
-            self._pushD()
-            self._writeComment("END")
-            self._writeCode("("+END+")")
+            self._jumpIf(NE,END,"D;JNE")
         elif command == T_GT:
             NGT = self._uniqueLabel()
             END = self._uniqueLabel()
-            self.writeArithmetic(T_SUB)
-            self._popD()
-            self._writeCode("@"+NGT)
-            self._writeCode("D;JLE")
-            self._writeCode("D=-1")
-            self._pushD()
-            self._writeCode("@"+END)
-            self._writeCode("0;JMP")
-            self._writeComment("NGT")
-            self._writeCode("("+NGT+")")
-            self._writeCode("D=0")
-            self._pushD()
-            self._writeComment("END")
-            self._writeCode("("+END+")")
+            self._jumpIf(NGT,END,"D;JLE")
         elif command == T_LT:
             NLT = self._uniqueLabel()
             END = self._uniqueLabel()
-            self.writeArithmetic(T_SUB)
-            self._popD()
-            self._writeCode("@"+NLT)
-            self._writeCode("D;JGE")
-            self._writeCode("D=-1")
-            self._pushD()
-            self._writeCode("@"+END)
-            self._writeCode("0;JMP")
-            self._writeComment("NLT")
-            self._writeCode("("+NLT+")")
-            self._writeCode("D=0")
-            self._pushD()
-            self._writeComment("END")
-            self._writeCode("("+END+")")
+            self._jumpIf(NLT,END,"D;JGE")
         elif command == T_AND:
             self._popD()
             self._writeCode("@SP,M=M-1,A=M,D=D&M")
@@ -226,23 +210,23 @@ class CodeWriter(object):
             self._writeComment("push {0} {1:d}".format(segment, index))
 
             if segment == T_CONSTANT: 
-                self._writeCode("@"+str(index))
+                self._writeCode("@%s"%(index))
                 self._writeCode("D=A")
                 self._pushD()
             elif segment == T_STATIC:
-                self._writeCode("@"+self.fileName+"."+str(index)) #handled as a variable?
+                self._writeCode("@%s.%s"%(self.fileName,index)) #handled as a variable
                 self._writeCode("D=M")
                 self._pushD()
             elif segment == T_POINTER:
-                self._writeCode("@"+str(index + 3))
+                self._writeCode("@%s"%(index + 3))
                 self._writeCode("D=M")
                 self._pushD()
             elif segment == T_TEMP:
-                self._writeCode("@"+str(index + 5))
+                self._writeCode("@%s"%(index + 5))
                 self._writeCode("D=M")
                 self._pushD()
             elif segment == T_ARGUMENT:
-                self._pushToSegment(index, segment)
+                self._pushToSegment(index, segment) 
             elif segment == T_LOCAL:
                 self._pushToSegment(index, segment)
             elif segment == T_THIS:
@@ -257,15 +241,15 @@ class CodeWriter(object):
 
             if segment == T_STATIC:
                 self._popD()
-                self._writeCode("@"+self.fileName+"."+str(index))
+                self._writeCode("@%s.%s"%(self.fileName,index))
                 self._writeCode("M=D")
             elif segment == T_POINTER:
                 self._popD()
-                self._writeCode("@"+str(index + 3))
+                self._writeCode("@%s"%(index + 3))
                 self._writeCode("M=D")
             elif segment == T_TEMP:
                 self._popD()
-                self._writeCode("@"+str(5 + index))
+                self._writeCode("@%s"%(5 + index))
                 self._writeCode("M=D")
             elif segment == T_ARGUMENT:
                 self._popToSegment(index,segment)
@@ -291,7 +275,7 @@ class CodeWriter(object):
         See section 8.4 (p. 158) and Figure 8.6.
         """
         self._writeComment("label {0}".format(label))
-        pass
+        self._writeCode("(%s)"%(label))
 
     def writeGoto(self, label):
         """
@@ -299,7 +283,8 @@ class CodeWriter(object):
         See section 8.4 (p. 158) and Figure 8.6.
         """
         self._writeComment("goto {0}".format(label))
-        pass
+        self._writeCode("@%s"%(label))
+        self._writeCode("0;JMP")
 
     def writeIf(self,label):
         """
@@ -307,7 +292,10 @@ class CodeWriter(object):
         See section 8.4 (p. 158) and Figure 8.6.
         """
         self._writeComment("if-goto {0}".format(label))
-        pass
+        self._popD()
+        self._("@%s"%(label))
+        self._writeCode("D;JMP")
+        
 
     def writeFunction(self, functionName, numLocals):
         """
@@ -316,7 +304,7 @@ class CodeWriter(object):
         """
         self._writeComment("function {0} {1:d}".format(functionName, numLocals))
         self.functionName = functionName # For local labels
-        pass
+        self.write
 
     def writeReturn(self):
         """
@@ -342,4 +330,8 @@ class CodeWriter(object):
         See p. 162, "Bootstrap Code"
         """
         self._writeComment("Init")
-        pass
+        self._writeCode("@256,D=A,@0,M=D")
+        self._writeCode("@300,D=A,@1,M=D")
+        self._writeCode("@400,D=A,@2,M=D")
+        self._writeCode("@3000,D=A,@3,M=D")
+        self._writeCode("@3010,D=A,@4,M=D")
