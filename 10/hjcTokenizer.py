@@ -233,39 +233,75 @@ class Tokenizer(object):
         #self.token is a tuple whose first element should be the token type, 
         #    and whose second item is the character(s) making up the token.
 
-        while len(self.line):     # Characters remain
+        while len(self.line): 
+            print(self.line)    # Characters remain
             ch = self.line[0]     # Get the next charater
             if ch == ' ':         # Skip spaces; they are not represented in the parse tree
                 self.line = self.line[1:]
+                
                 continue
-            if ch in symbols:     # Parse a symbol
+
+            elif ch in symbols:     # Parse a symbol
                 self.line = self.line[1:]
                 self.token = (TK_SYMBOL, ch)
-                return
+                break
+                
+            elif ch in identStart:
+                if (self._ParseIdent() in keywords):
+                    self.token = (TK_KEYWORD, self._ParseIdent())
+                    self.line = self.line[len(self.token[1]):]
+
+                    break
+                else:
+                    self.token = (TK_IDENTIFIER, self._ParseIdent())
+                    self.line = self.line[len(self.token[1]):]
+                    break
+
+            
+            elif ch == "\"":
+                self.token = (TK_STRING_CONST, self._ParseString())
+                
+                break
+                
+            elif ch in numberChars:
+                self.token = (TK_INT_CONST, self._ParseInt())
+                self.line = self.line[len(str(self.token[1])):]
+                break
+                
+            else:
+            
+            
             # TODO1: Identify whether the current character begins an 
             #    integer constant, string constant, or identifier/keyword, and
             #    call the appropriate _Parse helper below.
             #    In each case, set self.token to store the parsed token.
             # HINT: See constants defined at the top of this file: keywords, symbols, identStart, identChars, etc.
             #       See also hjcTokens.py for token type constants like TK_SYMBOL
-            raise HjcError('Syntax error in line '+str(self.lineNumber)+': illegal character "' + ch + '"')
+                raise HjcError('Syntax error in line '+str(self.lineNumber)+': illegal character "' + ch + '"')
 
     def _ParseIdent(self):
         """
         Parse and return a string representing an identifier or keyword.
         """
         # TODO2: Compute the return value 
-        self.line = self.line[1:]
-        return ""
+        value = ""
+        i = 0
+        while (self.line[i] in identChars):
+            value += self.line[i]
+            i += 1
+        return value
 
 
     def _ParseInt(self):
         """
         Parses and returns a non-negative integer (converted to int type)
         """
-        # TODO3: Compute the return value
-        self.line = self.line[1:]
-        return 0
+        value = ""
+        i = 0
+        while (self.line[i] in numberChars):
+            value += self.line[i]
+            i += 1
+        return int(value)
 
 
     def _ParseString(self):
@@ -275,5 +311,11 @@ class Tokenizer(object):
         """
         # TODO4: Compute the return value 
         self.line = self.line[1:]
+        value = ""
+        while (self.line[0] != "\""):
+            value += self.line[0]
+            self.line = self.line[1:]
+        self.line = self.line[1:]
+        return value
         raise HjcError('Syntax error in line '+str(self.lineNumber)+': open string constant')
 

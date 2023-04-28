@@ -11,28 +11,28 @@ A=M
 M=D
 @SP
 M=M+1
-@LCL
+@1
 D=M
 @SP
 A=M
 M=D
 @SP
 M=M+1
-@ARG
+@2
 D=M
 @SP
 A=M
 M=D
 @SP
 M=M+1
-@THIS
+@3
 D=M
 @SP
 A=M
 M=D
 @SP
 M=M+1
-@THAT
+@4
 D=M
 @SP
 A=M
@@ -51,11 +51,11 @@ M=D
 D=M
 @LCL
 M=D
-    // goto Sys.init
-@Sys.init
+    // goto label1
+@$label1
 0;JMP
-    // label label1
-(label1)
+    // label Sys.init$ret.0
+(Sys.init$ret.0)
     // return
 @LCL
 D=M
@@ -184,7 +184,7 @@ M=M+1
 M=M-1
 A=M
 D=M
-@THEN
+@Main.min$THEN
 D;JNE
     // label ELSE
 (ELSE)
@@ -201,8 +201,8 @@ A=M
 M=D
 @SP
 M=M+1
-    // goto ENDIF
-@ENDIF
+    // goto ENDIFq
+@Main.min$ENDIF
 0;JMP
     // label THEN
 (THEN)
@@ -343,7 +343,7 @@ M=M+1
 M=M-1
 A=M
 D=M
-@THEN
+@Main.max$THEN
 D;JNE
     // label ELSE
 (ELSE)
@@ -361,7 +361,7 @@ M=D
 @SP
 M=M+1
     // goto ENDIF
-@ENDIF
+@Main.max$ENDIF
 0;JMP
     // label THEN
 (THEN)
@@ -457,28 +457,28 @@ A=M
 M=D
 @SP
 M=M+1
-@LCL
+@1
 D=M
 @SP
 A=M
 M=D
 @SP
 M=M+1
-@ARG
+@2
 D=M
 @SP
 A=M
 M=D
 @SP
 M=M+1
-@THIS
+@3
 D=M
 @SP
 A=M
 M=D
 @SP
 M=M+1
-@THAT
+@4
 D=M
 @SP
 A=M
@@ -497,11 +497,11 @@ M=D
 D=M
 @LCL
 M=D
-    // goto Main.min
-@Main.min
+    // goto label6
+@Main.main$label6
 0;JMP
-    // label label6
-(label6)
+    // label Main.min$ret.0
+(Main.min$ret.0)
     // return
 @LCL
 D=M
@@ -571,28 +571,28 @@ A=M
 M=D
 @SP
 M=M+1
-@LCL
+@1
 D=M
 @SP
 A=M
 M=D
 @SP
 M=M+1
-@ARG
+@2
 D=M
 @SP
 A=M
 M=D
 @SP
 M=M+1
-@THIS
+@3
 D=M
 @SP
 A=M
 M=D
 @SP
 M=M+1
-@THAT
+@4
 D=M
 @SP
 A=M
@@ -611,16 +611,16 @@ M=D
 D=M
 @LCL
 M=D
-    // goto Main.main
-@Main.main
+    // goto label7
+@Sys.init$label7
 0;JMP
-    // label label7
-(label7)
+    // label Main.main$ret.0
+(Main.main$ret.0)
     // label WHILE
 (WHILE)
     // Loop infinitely
     // goto WHILE
-@WHILE
+@Sys.init$WHILE
 0;JMP
     // Infinite loop
 (label8)

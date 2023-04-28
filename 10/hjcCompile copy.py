@@ -158,6 +158,7 @@ class CompileEngine(object):
         self._NextToken()
 
         self._CompileParameterList()
+        
         self._ExpectSymbol(')')
         self._NextToken()
         
@@ -319,7 +320,9 @@ class CompileEngine(object):
 
         # TODO-10A: Extend the code below to parse a let statement
         #           without array indexing.
+        
         # TODO-10F: Account for array indexing.
+        print("beginning of let statement")
         self._ExpectKeyword(KW_LET)
         self._NextToken()
         self._ExpectIdentifier()
@@ -327,13 +330,16 @@ class CompileEngine(object):
         if self._MatchSymbol('['):
             self._NextToken()
             self._CompileExpression()
+            self._NextToken()
             self._ExpectSymbol(']')
             self._NextToken()
         self._ExpectSymbol('=')
         self._NextToken()
         self._CompileExpression()
+        self._NextToken()
         self._ExpectSymbol(';')
         self._NextToken()
+        print("end of let statement")
         #self._SkipStatement(';')    # TODO-10A Delete this line.
 
         # HINT: You will find this snippet of code helpful to handle
@@ -371,7 +377,7 @@ class CompileEngine(object):
         EXIT:  Tokenizer positioned after final ';'.
         """
         self._WriteXmlTag('<doStatement>\n')
-
+        print("beginning of do statement")
         self._ExpectKeyword(KW_DO)
         self._NextToken()
 
@@ -382,7 +388,7 @@ class CompileEngine(object):
 
         self._ExpectSymbol(';')
         self._NextToken()
-
+        print("end of do statement")
         self._WriteXmlTag('</doStatement>\n')
 
 
@@ -433,6 +439,7 @@ class CompileEngine(object):
 
         #TODO-11A: Write the call to the function using scopeName
         #    and functionName.
+        
         self._ExpectSymbol(')')
         self._NextToken()
         
@@ -450,7 +457,7 @@ class CompileEngine(object):
         # TODO-10A: Replace the following line with code to parse a
         #     return statement.
         # TODO-10B: Account for return values.
-        
+        print
         self._ExpectKeyword(KW_RETURN)
         self._NextToken()
         if self._MatchSymbol(';'):
@@ -458,8 +465,11 @@ class CompileEngine(object):
             self._NextToken()
         else:
             self._CompileExpression()
+            self._NextToken()
             self._ExpectSymbol(';')
             self._NextToken()
+
+        
         # TODO-11A: In the case that no return expression was given, write
         #    the VM command to return value 0 for void functions.
         # TODO-11A: Write the VM return command.
@@ -540,22 +550,18 @@ class CompileEngine(object):
 
         # TODO-10C: Replace the skip below with code to parse a while statement.
         # TODO-11B: Extend the function to emit VM code for a while statement.
-        
         self._ExpectKeyword(KW_WHILE)
         self._NextToken()
         self._ExpectSymbol('(')
         self._NextToken()
         self._CompileExpression()
-        self._ExpectSymbol(')')
         self._NextToken()
         self._ExpectSymbol('{')
         while (not self._MatchSymbol('}')):
-            self._NextToken()
             self._CompileStatements()
+            self._NextToken()
         self._ExpectSymbol('}')
         self._NextToken()
-
-
 
         
         self._WriteXmlTag('</whileStatement>\n')
@@ -572,19 +578,27 @@ class CompileEngine(object):
         """
         #In project 11, you may find this dictionary of VM opcodes helpful
         vm_opcodes = {'+':OP_ADD, '-':OP_SUB, '|':OP_OR, "<":OP_LT, ">":OP_GT, "=":OP_EQ, "&":OP_AND}
-
+        
         self._WriteXmlTag('<expression>\n')
 
         # TODO-10E: Extend the following code.
+        # self._CompileTerm()
+        # self._NextToken()
+        # if self._MatchSymbol('+') or self._MatchSymbol('-') or self._MatchSymbol('*') or self._MatchSymbol('/') or self._MatchSymbol('&') or self._MatchSymbol('|') or self._MatchSymbol('<') or self._MatchSymbol('>') or self._MatchSymbol('='):
+        #     op = self._ExpectSymbol()
+        #     self._NextToken()
+        #     self._CompileTerm()
+        #     self._NextToken()
+        #     self.vmWriter.WriteArithmetic(vm_opcodes[op])
+    
+
+
+
         # TODO-11A: Write the operation for the VM.  Keep in mind that 
         #     multiply and divide need to be handled by calls to the 
         #     standard library, as the VM does not have those operators
         #     built-in. Use the dictionary of opcodes above.
         self._CompileTerm()
-        while (self._MatchSymbol("+-|<>=&/")):
-            self._ExpectSymbol("+-|<>=&/")
-            self._NextToken()
-            self._CompileTerm()
 
         self._WriteXmlTag('</expression>\n')
 
@@ -621,35 +635,33 @@ class CompileEngine(object):
         #           Note the helper function _EmitStringConstantVMCode above.
         # TODO-11D: Perform an array access on the variable if needed.
         #           See pp. 228-230.
-        if self.tokenizer.TokenType() == TK_INT_CONST: # check if int constant
+        if self.tokenizer.TokenType() == TK_INT_CONST:
             self._MatchIntConstant()
             self._NextToken()
-        elif self.tokenizer.TokenType() == TK_STRING_CONST: # check if string constant
-            self._MatchStringConstant()
-            self._NextToken()
-        elif self._MatchKeyword([KW_TRUE, KW_FALSE, KW_NULL, KW_THIS]): #check if keyword constant
-            self._ExpectKeyword([KW_TRUE, KW_FALSE, KW_NULL, KW_THIS])
-            self._NextToken()
-        elif self.tokenizer.TokenType() == TK_IDENTIFIER:
-            call = self.tokenizer.TokenTypeStr() # save call if a subroutine is called
-            self._NextToken()
-            if self._MatchSymbol('(.'): # check for subroutine call
-                self._CompileCall(call)
-            if self._MatchSymbol('['):# check for array inddexing
+        else:
+            if self.tokenizer.TokenType() == TK_IDENTIFIER:
+                self._ExpectIdentifier()
                 self._NextToken()
-                self._CompileExpression()
-                self._ExpectSymbol(']')
-                self._NextToken()
-        elif self._MatchSymbol('('): # check for expression
-            self._NextToken()
-            self._CompileExpression()
-            self._ExpectSymbol(')')
-            self._NextToken()
-        elif self._MatchSymbol('-~'): # check for unary op
-            self._ExpectSymbol('-~')
-            self._NextToken()
-            self._CompileTerm()
-
+                if self._MatchSymbol('['):
+                    self._NextToken()
+                    self._CompileExpression() 
+                    self._ExpectSymbol(']')
+                    self._NextToken()
+                elif self._MatchSymbol('('):
+                    self._NextToken()
+                    self._CompileExpressionList()
+                    self._ExpectSymbol(')')
+                    self._NextToken()
+                elif self._MatchSymbol('.'):
+                    self._NextToken()
+                    self._ExpectIdentifier()
+                    self._NextToken()
+                    self._ExpectSymbol('(')
+                    self._NextToken()
+                    self._CompileExpressionList()
+                    self._ExpectSymbol(')')
+                    self._NextToken()
+        self._NextToken()
         self._WriteXmlTag('</term>\n')
 
     def _CompileExpressionList(self):
@@ -667,7 +679,6 @@ class CompileEngine(object):
         count = 0
         while True:
             if self._MatchSymbol(')'):
-                self._ExpectSymbol(')')
                 break
             self._CompileExpression()
             count += 1

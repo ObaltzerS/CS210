@@ -269,6 +269,11 @@ class CodeWriter(object):
 
 # Functions below this comment are for Project 08. Ignore for Project 07.
 
+    """
+    This works up to the final test case, MinMax, which I was not able to impliment a solution for,
+    although I do feel like I understand what is required conceptually.
+    """
+
     def writeLabel(self, label):
         """ 
         Writes assembly code that effects the label command.
