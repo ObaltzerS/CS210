@@ -234,7 +234,7 @@ class Tokenizer(object):
         #    and whose second item is the character(s) making up the token.
 
         while len(self.line): 
-            #print(self.line)    # Characters remain
+            print(self.line)    # Characters remain
             ch = self.line[0]     # Get the next charater
             if ch == ' ':         # Skip spaces; they are not represented in the parse tree
                 self.line = self.line[1:]

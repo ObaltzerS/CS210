@@ -195,6 +195,7 @@ class CompileEngine(object):
             #          for parameterKind.
             parameterKind = SYMK_ARG
             self._DefineSymbol(parameterName, parameterType, parameterKind)
+            #self.vmWriter.WriteComment("Define parameter %s"%parameterName)
 
             if not self._MatchSymbol(','):
                 break
@@ -224,7 +225,7 @@ class CompileEngine(object):
         #11A: Write the VM function command below.
         #          The function name is given as a parameter above; 
         #          you will also need self.className.
-        self.vmWriter.WriteFunction("%s.%s"%(self.className,subroutineName),self.symbolTable.VarCount(SYMK_ARG))
+        self.vmWriter.WriteFunction("%s.%s"%(self.className,subroutineName),self.symbolTable.VarCount(SYMK_VAR))
         if subroutineType == KW_CONSTRUCTOR:
             #In a constructor, the first operations must allocate memory for 
             # the current object.
@@ -255,9 +256,7 @@ class CompileEngine(object):
         EXIT:  Tokenizer positioned after final ';'.
         """
         self._WriteXmlTag('<varDec>\n')
-        
         storageClass = self._ExpectKeyword(KW_VAR)
-        
         self._NextToken()
         
         
@@ -271,8 +270,8 @@ class CompileEngine(object):
         while True:
             variableName = self._ExpectIdentifier()
             self._NextToken()
-            #TODO-11B: Define the declared variable (above) in the symbol table.
-            self._DefineSymbol(variableName, variableType, SYMK_VAR)
+            #-11B: Define the declared variable (above) in the symbol table.
+            self._DefineSymbol(variableName, variableType, SYMK_VAR)             
             if not self._MatchSymbol(','):
                 break
             self._NextToken()
@@ -328,7 +327,7 @@ class CompileEngine(object):
         self._NextToken()
         self._ExpectIdentifier()
         dest = self.tokenizer.Identifier()
-        print(dest)
+        #print(dest)
         self._NextToken()
         if self._MatchSymbol('['):
             self._NextToken()
@@ -340,7 +339,7 @@ class CompileEngine(object):
         self._CompileExpression()
         self._ExpectSymbol(';')
         self._NextToken()
-        self.vmWriter.WritePop(self.symbolTable.KindOf(dest), self.symbolTable.IndexOf(dest))
+        self.vmWriter.WritePop(self._KindToSegment(self.symbolTable.KindOf(dest)), self.symbolTable.IndexOf(dest))
         #self._SkipStatement(';')    # TODO-10A Delete this line.
 
         # HINT: You will find this snippet of code helpful to handle
@@ -353,7 +352,7 @@ class CompileEngine(object):
             #           pointer.  Leave the result on the stack for now.
 
 
-        #TODO-11B: After the expression is compiled above, write a pop
+        #-11B: After the expression is compiled above, write a pop
         #    to assign the computed expression to given variable.
         #    Don't worry about arrays yet.
         #TODO-11D: Write VM commands to pop value into desired array location.
@@ -558,26 +557,23 @@ class CompileEngine(object):
         # -11B: Extend the function to emit VM code for a while statement.
         
         self._ExpectKeyword(KW_WHILE)
-
         self._NextToken()
-        
         self._ExpectSymbol('(')
-        
         self._NextToken()
         self.vmWriter.WriteLabel(condition)
+        #self.vmWriter.WriteComment("While condition")
         self._CompileExpression()
+        self.vmWriter.WriteArithmetic(OP_NOT)
+        #self.vmWriter.WriteComment("not")
         self.vmWriter.WriteIf(end)
+        #self.vmWriter.WriteComment("if-goto end")
         self._ExpectSymbol(')')
-        
         self._NextToken()
-        
         self._ExpectSymbol('{')
         while (not self._MatchSymbol('}')):
-        
             self._NextToken()
             self._CompileStatements()
         self._ExpectSymbol('}')
-
         self._NextToken()
         self.vmWriter.WriteGoto(condition)
         self.vmWriter.WriteLabel(end)
@@ -609,14 +605,14 @@ class CompileEngine(object):
         #     built-in. Use the dictionary of opcodes above.
         self._CompileTerm()
         while (self._MatchSymbol("+-|<>=&/*")):
-            symol = self.tokenizer.Symbol()
+            sybmol = self.tokenizer.Symbol()
             self._ExpectSymbol("+-|<>=&/*")
             self._NextToken()
             self._CompileTerm()
-            if symol == '*':
+            if sybmol == '*':
                 self.vmWriter.WriteCall("Math.multiply", 2) #handles multiply
             else:
-                self.vmWriter.WriteArithmetic(vm_opcodes[symol])
+                self.vmWriter.WriteArithmetic(vm_opcodes[sybmol])
 
         self._WriteXmlTag('</expression>\n')
 
@@ -647,7 +643,7 @@ class CompileEngine(object):
         #           onto the stack.
         # 11B: Write VM commands below for the unary operations, 
         #           and keyword constants.
-        # TODO-11B: If the expression is a variable, push it onto the stack.
+        # -11B: If the expression is a variable, push it onto the stack.
         #           Don't worry about array accesses yet.
         # TODO-11D: Write VM commands for string constants.
         #           Note the helper function _EmitStringConstantVMCode above.
@@ -662,15 +658,21 @@ class CompileEngine(object):
             self._NextToken()
         elif self._MatchKeyword([KW_TRUE, KW_FALSE, KW_NULL, KW_THIS]): #check if keyword constant
             self._ExpectKeyword([KW_TRUE, KW_FALSE, KW_NULL, KW_THIS])
+            if self.tokenizer.Keyword() == KW_TRUE:
+                self.vmWriter.WritePush(SEG_CONST, 0)
+                self.vmWriter.WriteArithmetic(OP_NOT)
+            elif self.tokenizer.Keyword() == KW_FALSE or self.tokenizer.Keyword() == KW_NULL:
+                self.vmWriter.WritePush(SEG_CONST, 0)
             self._NextToken()
         elif self.tokenizer.TokenType() == TK_IDENTIFIER:
             call = self.tokenizer.Identifier() # save call if a subroutine is called
             self._NextToken()
             if self._MatchSymbol('(.'): # check for subroutine call
                 self._CompileCall(call)
-                print(call)
-                # the next line is correct, however "call" is picking up <identifier> instead of the actual identifier string
-                self.vmWriter.WritePush(SEG_VAR, self.symbolTable.IndexOf(call)) # push the subroutine call onto the stack
+            else:
+                self.vmWriter.WritePush(self._KindToSegment(self.symbolTable.KindOf(call)), self.symbolTable.IndexOf(call))
+                #self.vmWriter.WriteComment("pushing " + call + " onto the stack")
+            #self.vmWriter.WritePush(SEG_ARG, self.symbolTable.IndexOf(call)) # push the subroutine call onto the stack
             if self._MatchSymbol('['):# check for array inddexing
                 self._NextToken()
                 self._CompileExpression()
