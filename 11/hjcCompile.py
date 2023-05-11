@@ -139,10 +139,12 @@ class CompileEngine(object):
         subroutineType = self._ExpectKeyword((KW_CONSTRUCTOR, KW_FUNCTION,
                                               KW_METHOD))
         self._NextToken()
-        #TODO-11C: For a method in particular, we need to declare an implicit 
+        #-11C: For a method in particular, we need to declare an implicit 
         #          first argument in the symbol table before we add the others.
+        if subroutineType == KW_METHOD:
+            self._DefineSymbol('this', self.className, SYMK_ARG) # first arguement refers to self
 
-
+        
         if self.tokenizer.TokenType() == TK_KEYWORD:
             returnType = self._ExpectKeyword((KW_INT, KW_CHAR, KW_BOOLEAN,
                                               KW_VOID))
@@ -152,7 +154,6 @@ class CompileEngine(object):
 
         subroutineName = self._ExpectIdentifier()
         self._NextToken()
-
 
         self._ExpectSymbol('(')
         self._NextToken()
@@ -234,10 +235,11 @@ class CompileEngine(object):
             self.vmWriter.WriteCall("Memory.alloc", 1)
             self.vmWriter.WritePop(SEG_POINTER, 0)
         elif subroutineType == KW_METHOD:
-            #TODO-11C: Replace "pass" with code to move the current object
+            #-11C: Replace "pass" with code to move the current object
             #          pointer from its spot as the first argument to
             #          the THIS pointer location
-            pass
+            self.vmWriter.WritePush(SEG_ARG,0)
+            self.vmWriter.WritePop(SEG_POINTER,0)
 
         self._CompileStatements()
 
@@ -262,16 +264,17 @@ class CompileEngine(object):
         
         
         if self.tokenizer.TokenType() == TK_KEYWORD:
-            variableType = self._ExpectKeyword((KW_INT, KW_CHAR, KW_BOOLEAN))
+            variableType = self._ExpectKeyword((KW_INT, KW_CHAR, KW_BOOLEAN)) #in the case that it is a primitive type
         else:
-            variableType = self._ExpectIdentifier()
+            variableType = self._ExpectIdentifier() #in the case that it is an object/class type
         self._NextToken()
 
         while True:
             variableName = self._ExpectIdentifier()
             self._NextToken()
             #-11B: Define the declared variable (above) in the symbol table.
-            self._DefineSymbol(variableName, variableType, SYMK_VAR)             
+            self._DefineSymbol(variableName, variableType, SYMK_VAR) # in the case of an object/class type, the variableType is the className          
+            #self.vmWriter.WriteComment("Define variable %s of type %s "%(variableName,variableType) )
             if not self._MatchSymbol(','):
                 break
             self._NextToken()
@@ -324,14 +327,22 @@ class CompileEngine(object):
         #           without array indexing.
         # TODO-10F: Account for array indexing.
         self._ExpectKeyword(KW_LET)
+        #self.vmWriter.WriteComment("let")
         self._NextToken()
         self._ExpectIdentifier()
         dest = self.tokenizer.Identifier()
         #print(dest)
         self._NextToken()
+        isArray = False
         if self._MatchSymbol('['):
+            isArray = True
             self._NextToken()
+            #self.vmWriter.WriteComment("array index -")
+            #self.vmWriter.WriteComment("pushing ")
             self._CompileExpression()
+            self.vmWriter.WritePush(self._KindToSegment(self.symbolTable.KindOf(dest)), self.symbolTable.IndexOf(dest))
+            self.vmWriter.WriteArithmetic(OP_ADD)
+            #self.vmWriter.WriteComment("array index ^")
             self._ExpectSymbol(']')
             self._NextToken()
         self._ExpectSymbol('=')
@@ -339,7 +350,7 @@ class CompileEngine(object):
         self._CompileExpression()
         self._ExpectSymbol(';')
         self._NextToken()
-        self.vmWriter.WritePop(self._KindToSegment(self.symbolTable.KindOf(dest)), self.symbolTable.IndexOf(dest))
+        #self.vmWriter.WriteComment("let end")
         #self._SkipStatement(';')    # TODO-10A Delete this line.
 
         # HINT: You will find this snippet of code helpful to handle
@@ -350,7 +361,13 @@ class CompileEngine(object):
         #    isArrayAssign = True
             # TODO-11D: After computing the index, add that index to the base
             #           pointer.  Leave the result on the stack for now.
-
+        if isArray:
+            self.vmWriter.WritePop(SEG_TEMP,0)
+            self.vmWriter.WritePop(SEG_POINTER,1)
+            self.vmWriter.WritePush(SEG_TEMP,0)
+            self.vmWriter.WritePop(SEG_THAT,0)
+        else:
+            self.vmWriter.WritePop(self._KindToSegment(self.symbolTable.KindOf(dest)), self.symbolTable.IndexOf(dest))
 
         #-11B: After the expression is compiled above, write a pop
         #    to assign the computed expression to given variable.
@@ -426,23 +443,37 @@ class CompileEngine(object):
         else:
             subroutineName = firstIdentifier
 
-        argcount = 0
+        argcount = 0 
         callClass = scopeName
         if scopeName != None:
-            #TODO-11C: Set callClass based on the scopeName, whether it is an
+            #-11C: Set callClass based on the scopeName, whether it is an
             #    object name or class name.  If object, push it for the first 
             #    implicit argument of the method, as the new "current object"
-            pass
+            #    for the method.
+            if (self.symbolTable.ScopeOf(scopeName) != "None"):
+                self.vmWriter.WritePush(self._KindToSegment(self.symbolTable.KindOf(scopeName)), self.symbolTable.IndexOf(scopeName))
+                scopeName = self.symbolTable.TypeOf(scopeName)
+                argcount += 1
+
+    
+            
         else:
-            #TODO-11C: we are implicitly calling a method on the current object,
+            
+            #-11C: we are implicitly calling a method on the current object,
             #    so push the current object on the stack as the first argument
-            pass
+            #    to the method.
+            #self.vmWriter.WriteComment("pushing current object onto the stack as first arguement")
+            scopeName = self.className
+            self.vmWriter.WritePush(SEG_POINTER, 0)
+            argcount += 1
+
 
         argcount += self._CompileExpressionList()
 
         #-11A: Write the call to the function using scopeName
         #    and functionName.
-        self.vmWriter.WriteCall("%s.%s"%(callClass,subroutineName), argcount)
+        #self.vmWriter.WriteComment("calling %s.%s"%(scopeName,subroutineName))
+        self.vmWriter.WriteCall("%s.%s"%(scopeName,subroutineName), argcount)
 
         self._ExpectSymbol(')')
         self._NextToken()
@@ -611,6 +642,8 @@ class CompileEngine(object):
             self._CompileTerm()
             if sybmol == '*':
                 self.vmWriter.WriteCall("Math.multiply", 2) #handles multiply
+            elif sybmol == '/':
+                self.vmWriter.WriteCall("Math.divide", 2) #handles divide
             else:
                 self.vmWriter.WriteArithmetic(vm_opcodes[sybmol])
 
@@ -655,6 +688,7 @@ class CompileEngine(object):
             self._NextToken()
         elif self.tokenizer.TokenType() == TK_STRING_CONST: # check if string constant
             self._MatchStringConstant()
+            self._EmitStringConstantVMCode(self.tokenizer.StringVal())
             self._NextToken()
         elif self._MatchKeyword([KW_TRUE, KW_FALSE, KW_NULL, KW_THIS]): #check if keyword constant
             self._ExpectKeyword([KW_TRUE, KW_FALSE, KW_NULL, KW_THIS])
@@ -663,19 +697,28 @@ class CompileEngine(object):
                 self.vmWriter.WriteArithmetic(OP_NOT)
             elif self.tokenizer.Keyword() == KW_FALSE or self.tokenizer.Keyword() == KW_NULL:
                 self.vmWriter.WritePush(SEG_CONST, 0)
+            elif self.tokenizer.Keyword() == KW_THIS:
+                self.vmWriter.WritePush(SEG_POINTER,0)
             self._NextToken()
         elif self.tokenizer.TokenType() == TK_IDENTIFIER:
             call = self.tokenizer.Identifier() # save call if a subroutine is called
             self._NextToken()
             if self._MatchSymbol('(.'): # check for subroutine call
                 self._CompileCall(call)
-            else:
+            elif(not self._MatchSymbol('(.') and not self._MatchSymbol('[')): # check for variable
+                #self.vmWriter.WriteComment("Variable")
                 self.vmWriter.WritePush(self._KindToSegment(self.symbolTable.KindOf(call)), self.symbolTable.IndexOf(call))
-                #self.vmWriter.WriteComment("pushing " + call + " onto the stack")
-            #self.vmWriter.WritePush(SEG_ARG, self.symbolTable.IndexOf(call)) # push the subroutine call onto the stack
             if self._MatchSymbol('['):# check for array inddexing
+                #self.vmWriter.WriteComment("Array indexing")
                 self._NextToken()
+                #self.vmWriter.WriteComment("compiling index expression")
                 self._CompileExpression()
+                self.vmWriter.WritePush(self._KindToSegment(self.symbolTable.KindOf(call)), self.symbolTable.IndexOf(call))
+                #self.vmWriter.WriteComment("index expression compiled")
+                self.vmWriter.WriteArithmetic(OP_ADD)
+                self.vmWriter.WritePop(SEG_POINTER, 1)
+                self.vmWriter.WritePush(SEG_THAT, 0)
+                #self.vmWriter.WriteComment("Array indexing end")
                 self._ExpectSymbol(']')
                 self._NextToken()
         elif self._MatchSymbol('('): # check for expression
